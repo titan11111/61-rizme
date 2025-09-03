@@ -1,3 +1,13 @@
+// Prevent double-tap zoom on mobile devices
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(event) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+    }
+    lastTouchEnd = now;
+}, false);
+
 // ゲームの基本設定
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
