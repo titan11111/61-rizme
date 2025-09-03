@@ -1,0 +1,238 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+.game-container {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    max-width: 500px;
+    width: 100%;
+}
+
+.game-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.game-header h1 {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.score-info {
+    display: flex;
+    justify-content: space-between;
+    background: #f8f9fa;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: bold;
+    color: #495057;
+}
+
+.game-area {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+#gameCanvas {
+    border: 3px solid #495057;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+    width: 95%;
+    height: auto;
+}
+
+.game-over,
+.game-clear {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    display: none;
+    z-index: 10;
+}
+
+.game-clear {
+    background: rgba(40, 167, 69, 0.95);
+}
+
+.game-over h2,
+.game-clear h2 {
+    font-size: 24px;
+    margin-bottom: 15px;
+}
+
+.restart-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 15px 25px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background 0.3s ease;
+}
+
+.restart-btn:hover {
+    background: #0056b3;
+}
+
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.control-row {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.control-btn {
+    flex: 1;
+    max-width: 120px;
+    padding: 15px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.control-btn:hover {
+    background: #218838;
+    transform: translateY(-2px);
+}
+
+.control-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.jump-btn {
+    flex: 1;
+    max-width: 200px;
+    padding: 20px;
+    background: #ff6b35;
+    color: white;
+    border: none;
+    border-radius: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.jump-btn:hover {
+    background: #e55a2b;
+    transform: translateY(-3px);
+}
+
+.jump-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.instructions {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.instructions h3 {
+    color: #495057;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.instructions p {
+    color: #6c757d;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+/* スマホ対応 */
+@media (max-width: 480px) {
+    .game-container {
+        padding: 15px;
+    }
+    
+    .game-header h1 {
+        font-size: 20px;
+    }
+    
+    .score-info {
+        font-size: 14px;
+        padding: 8px 15px;
+    }
+    
+    #gameCanvas {
+        width: 95%;
+        height: 480px;
+    }
+    
+    .control-btn {
+        padding: 12px;
+        font-size: 14px;
+    }
+    
+    .jump-btn {
+        padding: 18px;
+        font-size: 16px;
+    }
+    
+    .instructions p {
+        font-size: 12px;
+    }
+}
+
+/* より小さなスマホ対応 */
+@media (max-width: 360px) {
+    #gameCanvas {
+        width: 95%;
+        height: 420px;
+    }
+    
+    .control-btn {
+        padding: 10px;
+        font-size: 13px;
+    }
+    
+    .jump-btn {
+        padding: 15px;
+        font-size: 15px;
+    }
+}
