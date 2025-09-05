@@ -3,57 +3,718 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>リズム格闘ゲーム</title>
-    <link rel="stylesheet" href="style.css">
+    <title>メトロポリタン・リズム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            height: 80vh;
+            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.2);
+            border: 2px solid #00ffff;
+            overflow: hidden;
+        }
+
+        .info-panel {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            font-size: 1.5rem;
+            text-shadow: 0 0 5px #00ffff;
+            z-index: 10;
+        }
+
+        .score-goal {
+            font-size: 1.25rem;
+            color: #00ffff;
+        }
+
+        .stage {
+            position: relative;
+            width: 95%;
+            height: 500px;
+            background: linear-gradient(to top, #2d2d5e, #1a1a2e);
+            border-radius: 10px;
+            box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.3);
+            overflow: hidden;
+        }
+
+        .target-zone {
+            position: absolute;
+            left: 30%;
+            top: 0;
+            bottom: 0;
+            width: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 3px dashed #00ffff;
+            border-right: 3px dashed #00ffff;
+            transform: translateX(-50%);
+            z-index: 5;
+        }
+        
+        .note {
+            position: absolute;
+            right: -50px;
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px;
+            transition: transform linear;
+            animation: pulse 1s infinite alternate;
+        }
+
+        .note.punch { background-color: #ff5252; box-shadow: 0 0 15px #ff5252; }
+        .note.kick { background-color: #52ff52; box-shadow: 0 0 15px #52ff52; }
+        .note.jump { background-color: #5252ff; box-shadow: 0 0 15px #52ff52; }
+
+        .feedback-text {
+            position: absolute;
+            left: 30%;
+            top: 40%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            opacity: 0;
+            animation: fadeOutUp 0.8s forwards;
+            text-shadow: 0 0 10px #fff;
+            z-index: 15;
+        }
+
+        .feedback-text.perfect { color: #fff; text-shadow: 0 0 10px #fff; }
+        .feedback-text.great { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+        .feedback-text.good { color: #ffff00; text-shadow: 0 0 10px #ffff00; }
+
+        .character-container {
+            position: absolute;
+            left: 30%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+
+        .character-svg {
+            width: 150px;
+            height: 150px;
+            transform-origin: bottom;
+            transition: transform 0.2s ease-out;
+        }
+
+        /* New and improved character animation styles */
+        .character-svg #leftArm, .character-svg #rightArm, .character-svg #leftLeg, .character-svg #rightLeg {
+            transition: transform 0.2s ease-out;
+            transform-box: fill-box;
+            transform-origin: center;
+        }
+        
+        .character-svg.punch { transform: translateX(10px) rotate(5deg); }
+        .character-svg.punch #rightArm { transform: translateX(20px) translateY(-10px) rotate(-60deg) scaleX(1.1); }
+        .character-svg.punch #leftArm { transform: translateX(-10px) translateY(5px) rotate(15deg); }
+        .character-svg.punch #leftLeg { transform: rotate(-5deg); }
+        .character-svg.punch #rightLeg { transform: rotate(5deg); }
+
+        .character-svg.kick { transform: translateX(-10px) rotate(-5deg); }
+        .character-svg.kick #rightLeg { transform: translateY(-30px) translateX(10px) rotate(-90deg) scaleX(1.1); }
+        .character-svg.kick #leftLeg { transform: rotate(5deg); }
+        .character-svg.kick #rightArm { transform: translateX(-5px) translateY(5px) rotate(15deg); }
+        .character-svg.kick #leftArm { transform: translateX(5px) translateY(-5px) rotate(-15deg); }
+
+        .character-svg.jump { transform: translateY(-30px); }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            z-index: 10;
+        }
+
+        .control-btn {
+            padding: 15px 30px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #fff;
+            background-color: #3b3b5b;
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px #00ffff;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px #00ffff;
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px #00ffff;
+        }
+
+        .control-btn.punch { background-color: #ff5252; border-color: #ff5252; box-shadow: 0 0 10px #ff5252; }
+        .control-btn.kick { background-color: #52ff52; border-color: #52ff52; box-shadow: 0 0 10px #52ff52; }
+        .control-btn.jump { background-color: #5252ff; border-color: #5252ff; box-shadow: 0 0 10px #52ff52; }
+
+        .control-btn.active.punch { background-color: #ff5252; box-shadow: 0 0 20px #ff5252; }
+        .control-btn.active.kick { background-color: #52ff52; box-shadow: 0 0 20px #52ff52; }
+        .control-btn.active.jump { background-color: #5252ff; box-shadow: 0 0 20px #5252ff; }
+        
+        .screen-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            gap: 20px;
+        }
+        
+        .loading-text {
+            font-size: 2rem;
+            animation: pulse-color 2s infinite;
+        }
+        
+        @keyframes pulse-color {
+            0% { color: #00ffff; }
+            50% { color: #e0e0e0; }
+            100% { color: #00ffff; }
+        }
+
+        .title {
+            font-size: 4rem;
+            font-weight: bold;
+            text-shadow: 0 0 15px #00ffff;
+            animation: glow 2s infinite alternate;
+        }
+
+        .start-button, .level-button {
+            padding: 20px 40px;
+            font-size: 2rem;
+            font-weight: bold;
+            background-color: #00ffff;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 0 20px #00ffff;
+            transition: all 0.3s;
+        }
+
+        .start-button:hover, .level-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px #00ffff;
+        }
+
+        .level-select-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .level-button.locked {
+            background-color: #555555;
+            color: #aaaaaa;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+            border: 2px solid #555555;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        @keyframes fadeOutUp {
+            from { transform: translate(-50%, -50%); opacity: 1; }
+            to { transform: translate(-50%, -100%); opacity: 0; }
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 15px #00ffff; }
+            to { text-shadow: 0 0 25px #00ffff, 0 0 35px #00ffff; }
+        }
+    </style>
 </head>
-<body>
-    <div class="game-container">
-        <div class="header">
-            <h1>リズム格闘ゲーム</h1>
-            <div class="score">スコア: <span id="score">0</span></div>
-            <div class="combo">コンボ: <span id="combo">0</span></div>
+<body class="bg-gray-900 text-white flex items-center justify-center">
+
+    <div id="gameContainer" class="game-container">
+        
+        <!-- スタート画面 -->
+        <div id="startScreen" class="screen-overlay">
+            <h1 class="title">メトロポリタン・リズム</h1>
+            <p class="text-xl text-center mt-5">
+                キーボードの 'A', 'S', 'D' キー、または矢印キーでプレイします。<br>
+                ※モバイルでは最初のタップで音が再生されます。
+            </p>
+            <button id="startButton" class="start-button">スタート</button>
         </div>
         
-        <div class="game-area">
-            <div class="character" id="character">
-                <div class="head"></div>
-                <div class="body"></div>
-                <div class="arm left-arm"></div>
-                <div class="arm right-arm"></div>
-                <div class="leg left-leg"></div>
-                <div class="leg right-leg"></div>
+        <!-- Firebaseロード中画面 -->
+        <div id="loadingScreen" class="screen-overlay hidden">
+            <p class="loading-text">ロード中...</p>
+        </div>
+
+        <!-- 難易度選択画面 -->
+        <div id="difficultySelectScreen" class="screen-overlay hidden">
+            <h2 class="text-3xl font-bold mb-5">難易度を選択してください</h2>
+            <div class="level-select-container">
+                <button id="easyButton" class="level-button">かんたん</button>
+                <button id="normalButton" class="level-button locked" disabled>ふつう</button>
+                <button id="hardButton" class="level-button locked" disabled>むずかしい</button>
+            </div>
+        </div>
+
+        <!-- レベルクリア画面 -->
+        <div id="levelClearScreen" class="screen-overlay hidden">
+            <h2 class="text-4xl font-bold mb-4 text-green-400">レベルクリア！</h2>
+            <p class="text-2xl mb-8">次のレベルへ進みましょう</p>
+            <button id="nextLevelButton" class="start-button">次のレベルへ</button>
+        </div>
+
+        <!-- エンディング画面 -->
+        <div id="endingScreen" class="screen-overlay hidden">
+            <h2 class="text-4xl font-bold mb-4 text-yellow-400">ゲームクリア！</h2>
+            <p class="text-2xl mb-8">すべてのレベルをクリアしました！</p>
+            <p class="text-2xl mb-8">最終スコア: <span id="finalScore">0</span></p>
+            <button id="playAgainButton" class="start-button">もう一度プレイ</button>
+        </div>
+
+        <!-- ゲームプレイ画面 -->
+        <div id="gameContent" class="hidden w-full h-full flex flex-col items-center justify-center">
+            <div class="info-panel">
+                <div class="score">スコア: <span id="score">0</span></div>
+                <div class="combo">コンボ: <span id="combo">0</span></div>
+                <div class="score-goal">クリアまで: <span id="scoreGoal">0</span></div>
             </div>
             
-            <div class="notes-area">
-                <div class="note-line" id="punch-line">
-                    <div class="target-zone">パンチ</div>
+            <div id="stage" class="stage mt-4">
+                <div class="target-zone"></div>
+                <div class="character-container">
+                    <svg class="character-svg" viewBox="0 0 100 100">
+                        <!-- Head -->
+                        <circle cx="50" cy="25" r="20" fill="#e0e0e0" stroke="#00ffff" stroke-width="2" id="head"/>
+                        <!-- Eyes and Mouth -->
+                        <circle cx="42" cy="22" r="3" fill="#1a1a2e" />
+                        <circle cx="58" cy="22" r="3" fill="#1a1a2e" />
+                        <path d="M 45 30 Q 50 35 55 30" stroke="#1a1a2e" stroke-width="2" fill="none" />
+                        <!-- Body -->
+                        <rect x="35" y="45" width="30" height="40" rx="5" ry="5" fill="#e0e0e0" stroke="#00ffff" stroke-width="2" id="body"/>
+                        <!-- Left Arm -->
+                        <rect x="25" y="50" width="10" height="20" rx="5" ry="5" fill="#e0e0e0" stroke="#00ffff" stroke-width="2" id="leftArm"/>
+                        <!-- Right Arm -->
+                        <rect x="65" y="50" width="10" height="20" rx="5" ry="5" fill="#e0e0e0" stroke="#00ffff" stroke-width="2" id="rightArm"/>
+                        <!-- Legs -->
+                        <rect x="40" y="85" width="8" height="15" fill="#e0e0e0" stroke="#00ffff" stroke-width="2" id="leftLeg"/>
+                        <rect x="52" y="85" width="8" height="15" fill="#e0e0e0" stroke="#00ffff" stroke-width="2" id="rightLeg"/>
+                    </svg>
                 </div>
-                <div class="note-line" id="kick-line">
-                    <div class="target-zone">キック</div>
-                </div>
-                <div class="note-line" id="jump-line">
-                    <div class="target-zone">ジャンプ</div>
-                </div>
+            </div>
+            
+            <div id="controls" class="controls">
+                <button id="punchButton" class="control-btn punch">パンチ (A / ←)</button>
+                <button id="kickButton" class="control-btn kick">キック (S / ↓)</button>
+                <button id="jumpButton" class="control-btn jump">ジャンプ (D / → / Space)</button>
             </div>
         </div>
         
-        <div class="controls">
-            <button class="action-btn punch-btn" id="punchBtn">パンチ</button>
-            <button class="action-btn kick-btn" id="kickBtn">キック</button>
-            <button class="action-btn jump-btn" id="jumpBtn">ジャンプ</button>
-        </div>
-        
-        <div class="game-controls">
-            <button id="startBtn" class="start-btn">ゲーム開始</button>
-            <button id="stopBtn" class="stop-btn">停止</button>
-        </div>
-        
-        <div class="instructions">
-            <p>🎵 ノートがターゲットゾーンに来たときにボタンを押そう！</p>
-            <p>⚡ 完璧なタイミングでコンボを繋げよう！</p>
-        </div>
+        <audio id="bgm" loop>
+            <source src="https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3" type="audio/mp3">
+        </audio>
+
     </div>
-    
-    <script src="script.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db;
+        let auth;
+        let userId;
+        let gameProgressRef;
+        let unlockedLevel = 1;
+
+        // UI elements
+        const startScreen = document.getElementById('startScreen');
+        const loadingScreen = document.getElementById('loadingScreen');
+        const difficultySelectScreen = document.getElementById('difficultySelectScreen');
+        const levelClearScreen = document.getElementById('levelClearScreen');
+        const endingScreen = document.getElementById('endingScreen');
+        const gameContent = document.getElementById('gameContent');
+        const stage = document.getElementById('stage');
+        const scoreDisplay = document.getElementById('score');
+        const comboDisplay = document.getElementById('combo');
+        const scoreGoalDisplay = document.getElementById('scoreGoal');
+        const punchButton = document.getElementById('punchButton');
+        const kickButton = document.getElementById('kickButton');
+        const jumpButton = document.getElementById('jumpButton');
+        const bgm = document.getElementById('bgm');
+        const characterSvg = document.querySelector('.character-svg');
+        const leftArm = document.getElementById('leftArm');
+        const rightArm = document.getElementById('rightArm');
+        const leftLeg = document.getElementById('leftLeg');
+        const rightLeg = document.getElementById('rightLeg');
+        const body = document.getElementById('body');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const easyButton = document.getElementById('easyButton');
+        const normalButton = document.getElementById('normalButton');
+        const hardButton = document.getElementById('hardButton');
+        const nextLevelButton = document.getElementById('nextLevelButton');
+        const playAgainButton = document.getElementById('playAgainButton');
+
+        // Game state variables
+        let score = 0;
+        let combo = 0;
+        let bpm;
+        let noteSpeedMultiplier;
+        let noteSpawnInterval;
+        let notes = [];
+        let isGameRunning = false;
+        let scoreToClearLevel;
+        let currentLevel = 0;
+
+        const noteTypes = ['punch', 'kick', 'jump'];
+        
+        const keyMap = {
+            'KeyA': 'punch',
+            'ArrowLeft': 'punch',
+            'KeyS': 'kick',
+            'ArrowDown': 'kick',
+            'ArrowRight': 'jump',
+            'KeyD': 'jump',
+            'Space': 'jump'
+        };
+        
+        // 難易度設定を更新: クリア条件をスコアに変更
+        const difficultySettings = {
+            1: { bpm: 80, speed: 0.5, scoreToClear: 25000 },
+            2: { bpm: 120, speed: 0.6, scoreToClear: 75000 },
+            3: { bpm: 150, speed: 0.7, scoreToClear: 150000 }
+        };
+
+        // UI screen management
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen-overlay').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        // Initialize Firebase and Auth
+        async function initializeFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                showScreen('loadingScreen');
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                userId = auth.currentUser.uid;
+                gameProgressRef = doc(db, 'artifacts', appId, 'users', userId, 'gameProgress', 'data');
+                
+                onSnapshot(gameProgressRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        unlockedLevel = docSnap.data().unlockedLevel;
+                    } else {
+                        // If doc doesn't exist, set initial unlocked level
+                        setDoc(gameProgressRef, { unlockedLevel: 1 }, { merge: true });
+                        unlockedLevel = 1;
+                    }
+                    updateDifficultyButtons();
+                    // Navigate to start screen after data is loaded
+                    if (document.getElementById('loadingScreen').classList.contains('hidden') === false) {
+                        showScreen('startScreen');
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                // In case of error, default to easy level
+                unlockedLevel = 1;
+                updateDifficultyButtons();
+                showScreen('startScreen');
+            }
+        }
+        
+        // Update button states based on unlocked level
+        function updateDifficultyButtons() {
+            if (unlockedLevel >= 1) {
+                easyButton.classList.remove('locked');
+                easyButton.disabled = false;
+            } else {
+                easyButton.classList.add('locked');
+                easyButton.disabled = true;
+            }
+
+            if (unlockedLevel >= 2) {
+                normalButton.classList.remove('locked');
+                normalButton.disabled = false;
+            } else {
+                normalButton.classList.add('locked');
+                normalButton.disabled = true;
+            }
+
+            if (unlockedLevel >= 3) {
+                hardButton.classList.remove('locked');
+                hardButton.disabled = false;
+            } else {
+                hardButton.classList.add('locked');
+                hardButton.disabled = true;
+            }
+        }
+
+        function setDifficulty(level) {
+            if (level > unlockedLevel) {
+                console.log("This level is not unlocked yet.");
+                return;
+            }
+            currentLevel = level;
+            const settings = difficultySettings[level];
+            bpm = settings.bpm;
+            noteSpeedMultiplier = settings.speed;
+            scoreToClearLevel = settings.scoreToClear;
+            
+            startGame();
+        }
+
+        function startGame() {
+            showScreen('gameContent');
+            score = 0;
+            combo = 0;
+            scoreDisplay.textContent = score;
+            comboDisplay.textContent = combo;
+            scoreGoalDisplay.textContent = scoreToClearLevel;
+            notes.forEach(note => note.element.remove());
+            notes = [];
+            isGameRunning = true;
+            
+            bgm.volume = 0.5;
+            // モバイル端末での自動再生ブロック対策
+            bgm.play().catch(error => {
+                console.log("Autoplay was prevented. Audio will start on first user interaction.");
+            });
+            
+            clearInterval(noteSpawnInterval);
+            noteSpawnInterval = setInterval(spawnNote, (60 / bpm) * 1000);
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnNote() {
+            const type = noteTypes[Math.floor(Math.random() * noteTypes.length)];
+            const element = document.createElement('div');
+            element.classList.add('note', type);
+            element.style.top = `${Math.random() * (stage.clientHeight - 50)}px`;
+            
+            const note = {
+                element: element,
+                type: type,
+                spawnTime: performance.now(),
+            };
+            notes.push(note);
+            stage.appendChild(element);
+        }
+
+        function gameLoop(currentTime) {
+            if (!isGameRunning) return;
+            
+            const targetX = stage.clientWidth * 0.3;
+            const noteSpeed = ((bpm / 60) * 200) * noteSpeedMultiplier;
+            
+            for (let i = notes.length - 1; i >= 0; i--) {
+                const note = notes[i];
+                const elapsedTime = currentTime - note.spawnTime;
+                const newRight = (noteSpeed * (elapsedTime / 1000));
+                
+                note.element.style.right = `${newRight}px`;
+
+                if (stage.clientWidth - newRight < (stage.clientWidth * 0.3) - 60) {
+                    if (note.element.style.opacity !== '0') {
+                        combo = 0;
+                        comboDisplay.textContent = combo;
+                        showFeedback('Miss', 'text-red-500');
+                    }
+                    note.element.style.opacity = '0';
+                    notes.splice(i, 1);
+                    note.element.remove();
+                }
+            }
+            
+            if (score >= scoreToClearLevel) {
+                isGameRunning = false;
+                clearInterval(noteSpawnInterval);
+                bgm.pause();
+                bgm.currentTime = 0;
+
+                setTimeout(async () => {
+                    if (currentLevel < 3) {
+                        showScreen('levelClearScreen');
+                        if (currentLevel === unlockedLevel) {
+                            await setDoc(gameProgressRef, { unlockedLevel: currentLevel + 1 }, { merge: true });
+                        }
+                    } else {
+                        finalScoreDisplay.textContent = score;
+                        showScreen('endingScreen');
+                    }
+                }, 1000);
+                
+                return;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function handleInput(type) {
+            if (!isGameRunning) return;
+
+            // プレイヤーの操作でBGMが再生されていなければ再生を開始
+            if (bgm.paused) {
+                bgm.play().catch(error => {
+                    console.error("Failed to play audio on user interaction:", error);
+                });
+            }
+
+            let hit = false;
+            let bestMatch = null;
+            let closestDistance = Infinity;
+            
+            notes.forEach(note => {
+                const noteX = stage.clientWidth - note.element.offsetLeft - (note.element.clientWidth / 2);
+                const targetX = stage.clientWidth * 0.3;
+                const distance = Math.abs(noteX - targetX);
+                
+                if (note.type === type && distance < 120 && distance < closestDistance) {
+                    closestDistance = distance;
+                    bestMatch = note;
+                }
+            });
+
+            if (bestMatch) {
+                const noteX = stage.clientWidth - bestMatch.element.offsetLeft - (bestMatch.element.clientWidth / 2);
+                const targetX = stage.clientWidth * 0.3;
+                const perfectThreshold = 10;
+                const greatThreshold = 30;
+                const goodThreshold = 60;
+                let feedbackClass = '';
+                
+                if (Math.abs(noteX - targetX) < perfectThreshold) {
+                    score += 500 + (combo * 10);
+                    combo++;
+                    feedbackClass = 'perfect';
+                    showFeedback('Perfect!', feedbackClass);
+                } else if (Math.abs(noteX - targetX) < greatThreshold) {
+                    score += 300 + (combo * 5);
+                    combo++;
+                    feedbackClass = 'great';
+                    showFeedback('Great!', feedbackClass);
+                } else if (Math.abs(noteX - targetX) < goodThreshold) {
+                    score += 100 + (combo * 2);
+                    combo++;
+                    feedbackClass = 'good';
+                    showFeedback('Good!', feedbackClass);
+                } else {
+                    combo = 0;
+                    showFeedback('Miss', 'text-red-500');
+                }
+
+                notes = notes.filter(note => note !== bestMatch);
+                bestMatch.element.remove();
+                
+                hit = true;
+            } else {
+                combo = 0;
+                showFeedback('Miss', 'text-red-500');
+            }
+
+            scoreDisplay.textContent = score;
+            comboDisplay.textContent = combo;
+            
+            const button = document.getElementById(`${type}Button`);
+            if (button) {
+                button.classList.add('active', type);
+                characterSvg.classList.add(type);
+                
+                setTimeout(() => {
+                    button.classList.remove('active', type);
+                    characterSvg.classList.remove(type);
+                }, 100);
+            }
+        }
+        
+        function showFeedback(text, className) {
+            const feedbackElement = document.createElement('div');
+            feedbackElement.classList.add('feedback-text', className);
+            feedbackElement.textContent = text;
+            stage.appendChild(feedbackElement);
+            setTimeout(() => {
+                feedbackElement.remove();
+            }, 800);
+        }
+
+        document.getElementById('startButton').addEventListener('click', () => {
+            showScreen('difficultySelectScreen');
+        });
+
+        document.getElementById('easyButton').addEventListener('click', () => setDifficulty(1));
+        document.getElementById('normalButton').addEventListener('click', () => setDifficulty(2));
+        document.getElementById('hardButton').addEventListener('click', () => setDifficulty(3));
+        document.getElementById('nextLevelButton').addEventListener('click', () => setDifficulty(currentLevel + 1));
+        document.getElementById('playAgainButton').addEventListener('click', () => showScreen('startScreen'));
+
+        document.addEventListener('keydown', (e) => {
+            const action = keyMap[e.code];
+            if (action && isGameRunning) {
+                handleInput(action);
+            }
+        });
+
+        punchButton.addEventListener('click', () => handleInput('punch'));
+        kickButton.addEventListener('click', () => handleInput('kick'));
+        jumpButton.addEventListener('click', () => handleInput('jump'));
+
+        // Start Firebase initialization on window load
+        window.onload = initializeFirebase;
+    </script>
 </body>
 </html>
