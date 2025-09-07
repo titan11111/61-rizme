@@ -2,12 +2,12 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover, maximum-scale=1.0" />
 <title>リズムバトル × アクション棒人間</title>
 <style>
   :root{
     --bg:#0b0f14; --panel:#121b26; --lane:#1a2430; --hit:#2a3647; --accent:#68e1ff; --ok:#4ade80; --warn:#fbbf24; --bad:#ef4444; --white:#eaf6ff;
-    --note-size: 26.4px; /* 1.2x */
+    --note-size: 26.4px; /* ノート50%でも視認性維持 */
   }
   html,body{margin:0;height:100%;background:radial-gradient(1200px 600px at 10% 0%, #0f1721 0%, #090d12 60%, #070a0f 100%);color:var(--white);font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", Meiryo, "Noto Sans JP", sans-serif;}
   *{box-sizing:border-box}
@@ -19,9 +19,9 @@
   .subtitle{opacity:.8;margin:0 0 12px 2px}
   .row{display:flex;gap:16px;flex-wrap:wrap}
   .card{background:linear-gradient(180deg,#121b26,#0e1620);border:1px solid #1b2836;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-  .grow{flex:1}
   .center{display:flex;align-items:center;justify-content:center;text-align:center}
-  .pill{padding:6px 10px;border-radius:999px;background:#0f1b28;border:1px solid #1b2a3a;font-size:12px;opacity:.9}
+  .pill{padding:6px 10px;border-radius:999px;background:#0f1b28;border:1px solid #1b2a3a;font-size:12px;opacity:.9;display:inline-flex;align-items:center;gap:6px}
+  .pill input{accent-color:#68e1ff}
 
   /* HUD */
   #hud{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
@@ -62,7 +62,7 @@
 
   /* Controls */
   #controls{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
-  .ctl{padding:12px 10px;font-size:16px;font-weight:800}
+  .ctl{padding:12px 10px;font-size:16px;font-weight:800;width:90%;}
 
   /* Result / Ending */
   .big{font-size:clamp(28px,6vw,52px);font-weight:900;letter-spacing:.04em}
@@ -76,6 +76,8 @@
 </style>
 </head>
 <body>
+<audio id="bgm" preload="auto" loop></audio>
+
 <div id="scene-start" class="scene active">
   <div class="wrap">
     <div class="card center">
@@ -83,7 +85,14 @@
         <div class="pill">Rhythm × Action</div>
         <h1 class="title">リズムバトル：棒人間でパンチ・キック・ジャンプ</h1>
         <p class="subtitle">押すだけで技。技で音楽。子ども向け・1ファイル。</p>
-        <div class="row" style="justify-content:center;margin:18px 0 6px">
+
+        <div class="row" style="justify-content:center;margin:10px 0 6px;gap:10px">
+          <label class="pill"><input type="radio" name="diff" value="easy"> EASY</label>
+          <label class="pill"><input type="radio" name="diff" value="normal" checked> NORMAL</label>
+          <label class="pill"><input type="radio" name="diff" value="hard"> HARD</label>
+        </div>
+
+        <div class="row" style="justify-content:center;margin:12px 0 6px">
           <button id="btnStart">はじめる</button>
           <button id="btnHow">あそびかた</button>
         </div>
@@ -111,11 +120,11 @@
         <div id="hpbar"><i style="width:100%"></i></div>
       </div>
       <div class="stat"><span>のこり</span> <b id="timeLeft">--</b></div>
+      <div class="stat"><span>診断</span> <b id="hc">-</b></div>
     </div>
 
     <div id="stage">
       <div id="fight" class="card">
-        <!-- Canvas 棒人間 -->
         <canvas id="gameCanvas" aria-label="stickman stage"></canvas>
         <div class="hit" id="hitFx"></div>
       </div>
@@ -181,14 +190,15 @@
 
   function fitCanvas(){
     const rect = canvas.getBoundingClientRect();
-    // reset transform before resizing to avoid compounding scales
     ctx.setTransform(1,0,0,1,0,0);
     canvas.width = Math.max(1, Math.floor(rect.width * dpr));
     canvas.height = Math.max(1, Math.floor(rect.height * dpr));
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
+  // 表示切替でサイズ0になる対策：scene変更時にも都度呼ぶ
   const resizeObserver = new ResizeObserver(()=>{ dpr = Math.max(1, window.devicePixelRatio || 1); fitCanvas(); });
   resizeObserver.observe(canvas);
+  window.addEventListener('resize', fitCanvas);
   fitCanvas();
 
   const stick = {
@@ -247,14 +257,12 @@
   let _y = stick.groundY();
 
   function updateStick(){
-    // gravity / jump
     if(stick.state==='jumping'){
       stick.vy += 0.8;
       _y += stick.vy;
       const gy = stick.groundY();
       if(_y >= gy){ _y = gy; stick.state='idle'; stick.vy = 0; }
     }
-    // action timer
     if(stick.timer>0){ stick.timer--; if(stick.timer===0 && stick.state!=='jumping') stick.state='idle'; }
   }
   function doAction(lane){
@@ -293,10 +301,10 @@
   // --------- Game State
   const State = {
     difficulty: 'normal',
-    chart: [], // {t, lane, el, hit?}
+    chart: [],
     idxByLane: [0,0,0],
     songLength: 60,
-    appear: 2.75, // seconds notes travel
+    appear: 2.75,
     windows: { perfect: .09, great: .14, good: .20 },
     score: 0, combo: 0, bestCombo: 0,
     tallies: {perfect:0, great:0, good:0, miss:0},
@@ -306,7 +314,7 @@
     rafId: null
   };
 
-  // --------- Chart Generator
+  // --------- Chart Generator（ノート量 50%）
   function generateChart(diff='normal'){
     const cfg = {
       easy:   { bpm: 100, bars: 16, density: 1.0 },
@@ -316,18 +324,19 @@
     const beat = 60/cfg.bpm;
     const chart = [];
     let t = 2.0; // lead-in
-    const stepsPerBar = 8; // eighth-note base
+    const stepsPerBar = 8;
     const chance = cfg.density;
 
     for(let bar=0;bar<cfg.bars;bar++){
       for(let step=0;step<stepsPerBar;step++){
         const lanePattern = [0,1,2];
-        if(Math.random() < 0.65*chance){ chart.push({t, lane: lanePattern[(bar+step)%3]}); }
-        if(Math.random() < 0.35*chance && step%2===0){ chart.push({t, lane: (lanePattern[(bar+step+1)%3])}); }
-        if(diff==='hard' && Math.random()<0.2 && step%2===1){ chart.push({t, lane: (lanePattern[(bar+step+2)%3])}); }
-        t += beat/2; // move by eighth
+        // 乱数判定を0.5倍して密度を半減
+        if(Math.random() < 0.65*chance*0.5){ chart.push({t, lane: lanePattern[(bar+step)%3]}); }
+        if(Math.random() < 0.35*chance*0.5 && step%2===0){ chart.push({t, lane: (lanePattern[(bar+step+1)%3])}); }
+        if(diff==='hard' && Math.random()<0.2*0.5 && step%2===1){ chart.push({t, lane: (lanePattern[(bar+step+2)%3])}); }
+        t += beat/2;
       }
-      if(bar%4===3){ t += beat; } // little breath
+      if(bar%4===3){ t += beat; }
     }
     chart.sort((a,b)=>a.t-b.t);
     return {chart, length: t + 2.0};
@@ -349,7 +358,7 @@
   }
 
   function updateNotes(now){
-    const H = qs('#lanes').clientHeight - 80; // bottom offset to hitline
+    const H = qs('#lanes').clientHeight - 80;
     const appear = State.appear;
     for(const n of State.chart){
       if(n.hit) continue;
@@ -370,10 +379,8 @@
   // --------- Input & Judgement
   function tryHit(lane){
     ensureAC();
-    // allow motion before start
     if(!State.running){ doAction(lane); VOICES[lane](0.7); return; }
     const now = AC.currentTime - State.startAt;
-    // find nearest unhit note in lane
     let target = null, idx = -1, bestAbs = 999;
     for(let i = State.idxByLane[lane]; i < State.chart.length; i++){
       const n = State.chart[i];
@@ -405,9 +412,8 @@
     setHP(State.hp - dmg);
     judgeFlash(j.toUpperCase(), j==='perfect'?'ok':j==='great'?'warn':'');
     updateHUD();
-    // audio
     const vol = j==='perfect'?1:j==='great'?0.85:0.7;
-    VOICES[ lastLane ]?.(vol);
+    VOICES[lastLane](vol);
   }
 
   function judgeFlash(text, type){
@@ -417,14 +423,10 @@
   }
 
   function setHP(v){ State.hp = clamp(v,0,State.hpMax); qs('#hpbar>i').style.width = ((State.hp/State.hpMax)*100)+'%'; if(v < State.hpMax){ flashEnemy(); } }
-  function flashEnemy(){
-    const f = qs('#fight');
-    f.classList.add('flash');
-    setTimeout(()=> f.classList.remove('flash'), 160);
-  }
+  function flashEnemy(){ const f = qs('#fight'); f.classList.add('flash'); setTimeout(()=> f.classList.remove('flash'), 160); }
   function shake(){ const f = qs('#fight'); f.classList.add('shake'); setTimeout(()=>f.classList.remove('shake'), 220); }
 
-  function hitEffect(lane, j){
+  function hitEffect(lane){
     const l = qs(`.lane[data-lane="${lane}"] .spark`); l.classList.remove('show'); void l.offsetWidth; l.classList.add('show');
     const fx = qs('#hitFx'); fx.classList.remove('show'); void fx.offsetWidth; fx.classList.add('show');
   }
@@ -434,10 +436,8 @@
     if(!State.running) return;
     const now = AC.currentTime - State.startAt;
     updateNotes(now);
-
     updateStick();
     drawStickman();
-
     const left = Math.max(0, State.songLength - now);
     qs('#timeLeft').textContent = left.toFixed(1)+'s';
     if(now > State.songLength + 1){ finish(false); return; }
@@ -448,6 +448,7 @@
 
   function finish(cleared){
     State.running = false; if(State.rafId) cancelAnimationFrame(State.rafId);
+    stopBGM();
     showScene('scene-result');
     qs('#resultTitle').textContent = cleared? 'ステージ クリア' : 'ステージ クリアならず';
     qs('#rPerfect').textContent = State.tallies.perfect;
@@ -462,21 +463,63 @@
 
   function updateHUD(){ qs('#score').textContent = State.score; qs('#combo').textContent = State.combo; }
 
-  // --------- Scene & Game Start
-  function showScene(id){ qsa('.scene').forEach(s=>s.classList.remove('active')); qs('#'+id).classList.add('active'); }
+  // --------- Scene & BGM
+  function showScene(id){
+    qsa('.scene').forEach(s=>s.classList.remove('active'));
+    const target = qs('#'+id);
+    target.classList.add('active');
+    if(id==='scene-play'){ fitCanvas(); drawStickman(); } // ★ 表示後にキャンバス調整
+  }
 
+  const bgm = document.getElementById("bgm");
+  const BGM_MAP = { easy:"audio/The_Swing_of_Time.mp3", normal:"audio/The_Swing_of_Time.mp3", hard:"audio/The_Swing_of_Time.mp3" };
+  function playBGM(){
+    const src = BGM_MAP[State.difficulty] || "audio/The_Swing_of_Time.mp3";
+    if(bgm.getAttribute("src") !== src) bgm.setAttribute("src", src);
+    bgm.volume = 0.4;
+    bgm.currentTime = 0;
+    bgm.play().catch(e => console.log("BGM再生エラー:", e));
+  }
+  function stopBGM(){ bgm.pause(); bgm.currentTime = 0; }
+  function getSelectedDiff(){ return (qs('input[name="diff"]:checked')?.value) || 'normal'; }
+
+  // --------- Health Check（3回）
+  function runHealthChecks(times=3){
+    let i=0;
+    const hcEl = qs('#hc');
+    const once = () => {
+      i++;
+      const acOk = !!AC && (AC.state==='running');
+      const bgmOk = !bgm.paused && bgm.currentTime>=0;
+      const canvasOk = canvas.width>0 && canvas.height>0;
+      const ok = acOk && bgmOk && canvasOk;
+      hcEl.textContent = ok ? `OK ${i}/${times}` : `NG ${i}/${times}`;
+      console.log(`[Check ${i}] AC:${acOk} BGM:${bgmOk} Canvas:${canvasOk}`);
+      if(i<times) setTimeout(once, 500);
+    };
+    setTimeout(once, 250);
+  }
+
+  // --------- Game Start
   function newGame(){
     ensureAC();
+    State.difficulty = getSelectedDiff();
+
     const {chart,length} = generateChart(State.difficulty);
-    State.chart = chart; State.songLength = length; State.hpMax = Math.max(60, Math.floor(chart.length*2.8)); State.hp = State.hpMax;
+    State.chart = chart; State.songLength = length;
+    State.hpMax = Math.max(60, Math.floor(chart.length*2.8)); State.hp = State.hpMax;
     State.score=0; State.combo=0; State.bestCombo=0; State.tallies={perfect:0,great:0,good:0,miss:0};
     spawnNotes();
     qs('#hpbar>i').style.width='100%';
 
-    // reset stick position each game
     _y = stick.groundY(); stick.vy=0; stick.state='idle'; stick.timer=0;
 
+    playBGM();
+    drawStickman(); // ★ 初期描画
+
     setTimeout(()=>{ State.startAt = AC.currentTime; State.running = true; loop(); }, 300);
+
+    runHealthChecks(3); // ★ 3回チェック
   }
 
   // --------- Controls
@@ -486,7 +529,14 @@
     const key = e.key.toLowerCase();
     if(keyMap.hasOwnProperty(key)){ e.preventDefault(); const lane = keyMap[key]; lastLane = lane; tryHit(lane); }
   }, {passive:false});
-  qsa('.ctl').forEach(b=> b.addEventListener('click', ()=> { const lane = parseInt(b.dataset.lane,10); lastLane = lane; tryHit(lane); }));
+  qsa('.ctl').forEach(b=> {
+    b.addEventListener('touchstart', (e)=> {
+      e.preventDefault();
+      const lane = parseInt(b.dataset.lane,10);
+      lastLane = lane;
+      tryHit(lane);
+    }, {passive: false});
+  });
 
   // --------- UI wiring
   qs('#btnStart').addEventListener('click', ()=>{ showScene('scene-play'); newGame(); });
@@ -495,7 +545,8 @@
   qs('#retry').addEventListener('click', ()=>{ showScene('scene-play'); newGame(); });
   qs('#restart').addEventListener('click', ()=>{ showScene('scene-start'); });
 
-  // iOS Audio unlock via first tap
+  // --------- Audio unlock（PC/モバイル）
+  document.body.addEventListener('click', ensureAC, {once:true});
   document.body.addEventListener('touchstart', ensureAC, {once:true, passive:true});
 
   // initial draw
