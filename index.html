@@ -1,470 +1,506 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>メトロポリタン・リズム</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>リズムバトル × アクション棒人間</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121b26; --lane:#1a2430; --hit:#2a3647; --accent:#68e1ff; --ok:#4ade80; --warn:#fbbf24; --bad:#ef4444; --white:#eaf6ff;
+    --note-size: 26.4px; /* 1.2x */
+  }
+  html,body{margin:0;height:100%;background:radial-gradient(1200px 600px at 10% 0%, #0f1721 0%, #090d12 60%, #070a0f 100%);color:var(--white);font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", Meiryo, "Noto Sans JP", sans-serif;}
+  *{box-sizing:border-box}
+  button{background:linear-gradient(180deg,#1f2b3a,#172232);border:1px solid #223043;border-radius:14px;color:var(--white);padding:12px 16px;font-weight:700;letter-spacing:.02em;cursor:pointer;transition:transform .06s ease, filter .12s ease, background .2s ease;}
+  button:hover{transform:translateY(-1px);} button:active{transform:translateY(0)}
+  .scene{display:none;min-height:100%;} .scene.active{display:block}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px}
+  .title{font-size:clamp(28px,6vw,48px);font-weight:800;letter-spacing:.03em;margin:6px 0 4px}
+  .subtitle{opacity:.8;margin:0 0 12px 2px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .card{background:linear-gradient(180deg,#121b26,#0e1620);border:1px solid #1b2836;border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .grow{flex:1}
+  .center{display:flex;align-items:center;justify-content:center;text-align:center}
+  .pill{padding:6px 10px;border-radius:999px;background:#0f1b28;border:1px solid #1b2a3a;font-size:12px;opacity:.9}
 
-    :root {
-      --c-bg:#1a1a2e;
-      --c-fg:#e0e0e0;
-      --c-ac:#00ffff;
-    }
+  /* HUD */
+  #hud{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+  #hud .stat{background:#132033;border:1px solid #1e2b3b;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:baseline}
+  #hud .stat b{font-size:18px}
+  #gaugeWrap{flex:1;display:flex;align-items:center;gap:10px}
+  #hpbar{height:12px;flex:1;background:#192535;border-radius:999px;overflow:hidden;border:1px solid #1f2d3f}
+  #hpbar>i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#16a34a,#4ade80);transition:width .12s linear}
+  #judge{min-width:100px;text-align:center;font-weight:900;letter-spacing:.05em}
 
-    body{
-      font-family:'Roboto Mono',monospace;
-      background:var(--c-bg);
-      color:var(--c-fg);
-      margin:0;
-      height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-    }
+  /* Stage */
+  #stage{position:relative;display:grid;grid-template-columns: 320px 1fr;gap:16px;}
+  #fight{position:relative;background:linear-gradient(180deg,#0e1620,#0b1119);border:1px solid #1a2736;border-radius:18px;overflow:hidden;min-height:340px;display:flex;align-items:center;justify-content:center}
+  #fight.shake{animation: shake .25s ease}
+  @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-6px,2px)}50%{transform:translate(6px,-2px)}75%{transform:translate(-4px,3px)}}
+  #fight.flash::after{
+    content:""; position:absolute; inset:0; background:radial-gradient(circle at 60% 60%, rgba(255,255,255,.35), rgba(255,255,255,0) 60%);
+    animation: flash .18s ease; pointer-events:none;
+  }
+  @keyframes flash{0%{opacity:1}100%{opacity:0}}
+  #gameCanvas{width:100%;height:100%;background:#1a202c;border-radius:0.75rem;box-shadow: inset 0 0 0 1px rgba(255,255,255,.05)}
+  .hit{position:absolute;right:18px;bottom:86px;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 40% 40%, #9be4ff, #3dd0ff, transparent 70%);opacity:0;}
+  .hit.show{animation: hit .35s ease}
+  @keyframes hit{0%{opacity:.95;transform:scale(.6)}100%{opacity:0;transform:scale(2.4)}}
 
-    .game-container{
-      position:relative;
-      width:min(1200px,100vw);
-      height:min(800px,90vh);
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      background:rgba(0,0,0,.4);
-      border:2px solid var(--c-ac);
-      border-radius:20px;
-      padding:18px;
-      box-shadow:0 0 40px rgba(0,255,255,.2);
-      overflow:hidden;
-    }
+  /* Lanes */
+  #lanes{position:relative;background:linear-gradient(180deg,#0b1118,#0b141d);border:1px solid #1a2736;border-radius:18px;overflow:hidden;min-height:340px;padding:10px;display:grid;grid-template-columns:repeat(3, 1fr);gap:10px}
+  .lane{position:relative;background:linear-gradient(180deg, #121b26, #0e1621);border:1px solid #1b2836;border-radius:12px;overflow:hidden}
+  .lane .label{position:absolute;left:10px;top:8px;font-size:12px;opacity:.8}
+  .lane .hitline{position:absolute;left:0;right:0;bottom:58px;height:3px;background:linear-gradient(90deg, transparent, var(--hit), transparent)}
+  .lane .note{position:absolute;left:50%;transform:translate(-50%, -50%);width:var(--note-size);height:var(--note-size);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+  .note.punch{background:linear-gradient(180deg,#ff7d7d,#ff3d3d)}
+  .note.kick{background:linear-gradient(180deg,#ffd07d,#ff9a1f)}
+  .note.jump{background:linear-gradient(180deg,#9be4ff,#4fd1ff)}
+  .lane .spark{position:absolute;left:50%;bottom:58px;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:radial-gradient(circle, #fff, transparent 60%);opacity:0}
+  .lane .spark.show{animation:spark .3s ease}
+  @keyframes spark{0%{opacity:1;transform:translateX(-50%) scale(.5)}100%{opacity:0;transform:translateX(-50%) scale(3)}}
 
-    .info-panel{
-      width:100%;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:8px 16px;
-      font-size:1.25rem;
-      text-shadow:0 0 5px var(--c-ac);
-      z-index:10;
-    }
-    .score-goal{color:var(--c-ac);font-size:1.1rem}
+  /* Controls */
+  #controls{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+  .ctl{padding:12px 10px;font-size:16px;font-weight:800}
 
-    .stage{
-      position:relative;
-      width:95%;
-      height:520px;
-      background:linear-gradient(to top,#2d2d5e,#1a1a2e);
-      border-radius:12px;
-      box-shadow:inset 0 0 20px rgba(0,255,255,.3);
-      overflow:hidden;
-    }
+  /* Result / Ending */
+  .big{font-size:clamp(28px,6vw,52px);font-weight:900;letter-spacing:.04em}
+  .result-grid{display:grid;grid-template-columns:repeat(2, minmax(220px,1fr));gap:14px;max-width:720px;margin:20px auto}
+  .result-item{background:#111a26;border:1px solid #1c2a3a;border-radius:12px;padding:14px;text-align:center}
+  .rank{font-size:42px;font-weight:900}
+  .ending{max-width:860px;margin:0 auto;line-height:1.9;opacity:.95}
+  .kbd{display:inline-block;padding:2px 8px;border-radius:6px;background:#101826;border:1px solid #1b2a3b;font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace}
 
-    .target-zone{
-      position:absolute;left:30%;top:0;bottom:0;width:120px;
-      background:rgba(255,255,255,.08);
-      border-left:3px dashed var(--c-ac);
-      border-right:3px dashed var(--c-ac);
-      transform:translateX(-50%);
-      z-index:5;
-    }
-
-    .note{
-      position:absolute;right:-56px;width:50px;height:50px;border-radius:10px;
-      box-shadow:0 0 15px;animation:pulse 1s infinite alternate;
-    }
-    .note.punch{background:#ff5252;box-shadow:0 0 15px #ff5252}
-    .note.kick {background:#52ff52;box-shadow:0 0 15px #52ff52}
-    .note.jump {background:#5252ff;box-shadow:0 0 15px #5252ff}
-
-    @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.05)}}
-
-    .feedback-text{
-      position:absolute;left:30%;top:40%;transform:translate(-50%,-50%);
-      font-size:2.5rem;font-weight:700;opacity:0;animation:fadeOutUp .8s forwards;
-      text-shadow:0 0 10px #fff;z-index:15;
-    }
-    .feedback-text.perfect{color:#fff}
-    .feedback-text.great{color:#00ff00}
-    .feedback-text.good{color:#ffff00}
-    .feedback-text.miss{color:#ff4d4d}
-
-    @keyframes fadeOutUp{
-      from{transform:translate(-50%,-50%);opacity:1}
-      to{transform:translate(-50%,-100%);opacity:0}
-    }
-
-    /* 棒人間（滑らかに動くようにパーツ分割） */
-    .character-container{
-      position:absolute;left:30%;bottom:24px;transform:translateX(-50%);z-index:10;
-    }
-    .character-svg{width:170px;height:170px;transform-origin:bottom center;transition:transform .18s ease}
-    .character-svg line,.character-svg circle{
-      stroke:#e8e8e8;stroke-width:6;fill:none;
-      transition:transform .18s ease;
-      transform-box:fill-box;transform-origin:top center;
-    }
-    /* 回転軸の個別微調整 */
-    #rightArm,#leftArm{transform-origin:12px 6px}
-    #rightLeg,#leftLeg{transform-origin:12px 6px}
-
-    /* アクション姿勢 */
-    .character-svg.punch #rightArm{transform:rotate(-85deg) translateY(-14px)}
-    .character-svg.punch {transform:translateX(8px) rotate(3deg)}
-
-    .character-svg.kick  #rightLeg{transform:rotate(65deg) translateY(-6px)}
-    .character-svg.kick  {transform:translateX(-6px) rotate(-2deg)}
-
-    .character-svg.jump{transform:translateY(-34px)}
-    .character-svg.jump #leftArm{transform:rotate(20deg)}
-    .character-svg.jump #rightArm{transform:rotate(-20deg)}
-    .character-svg.jump #leftLeg{transform:rotate(-8deg)}
-    .character-svg.jump #rightLeg{transform:rotate(8deg)}
-
-    .controls{
-      display:flex;gap:16px;margin-top:18px;z-index:10;flex-wrap:wrap;justify-content:center;
-    }
-    .control-btn{
-      padding:14px 24px;font-size:1.1rem;font-weight:700;color:#fff;background:#3b3b5b;
-      border:2px solid var(--c-ac);border-radius:10px;cursor:pointer;
-      transition:transform .15s, box-shadow .15s; box-shadow:0 0 10px var(--c-ac);
-      min-width:200px;
-    }
-    .control-btn:hover{transform:translateY(-2px);box-shadow:0 6px 16px var(--c-ac)}
-    .control-btn:active{transform:translateY(0)}
-
-    .control-btn.punch{background:#ff5252;border-color:#ff5252;box-shadow:0 0 10px #ff5252}
-    .control-btn.kick {background:#52ff52;border-color:#52ff52;box-shadow:0 0 10px #52ff52}
-    .control-btn.jump {background:#5252ff;border-color:#5252ff;box-shadow:0 0 10px #5252ff}
-
-    .control-btn.active.punch{box-shadow:0 0 18px #ff5252}
-    .control-btn.active.kick {box-shadow:0 0 18px #52ff52}
-    .control-btn.active.jump {box-shadow:0 0 18px #5252ff}
-
-    /* 画面オーバーレイ */
-    .screen-overlay{
-      position:absolute;inset:0;background:rgba(0,0,0,.82);
-      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:20;
-    }
-    .title{font-size:4rem;font-weight:700;text-shadow:0 0 15px var(--c-ac)}
-    .start-button,.level-button{
-      padding:18px 36px;font-size:1.8rem;font-weight:700;background:var(--c-ac);color:#102026;border:none;border-radius:14px;
-      cursor:pointer;box-shadow:0 0 20px var(--c-ac);transition:transform .2s, box-shadow .2s;
-    }
-    .start-button:hover,.level-button:hover{transform:scale(1.06);box-shadow:0 0 28px var(--c-ac)}
-    .level-select-container{display:flex;flex-direction:column;gap:16px}
-    .level-button.locked{background:#555;color:#aaa;cursor:not-allowed;box-shadow:none;border:2px solid #555}
-
-    /* スマホ横持ち最適化 */
-    @media (max-width: 900px) and (orientation: landscape){
-      .game-container{width:100vw;height:100vh;max-width:none;max-height:none;padding:10px}
-      #gameContent{display:grid;grid-template-columns:2fr 1fr;grid-template-rows:auto 1fr auto;gap:10px;width:100%;height:100%}
-      .info-panel{grid-column:1/3;font-size:1rem;padding:6px}
-      .stage{grid-column:1/2;height:78vh}
-      .controls{grid-column:2/3;flex-direction:column;align-items:stretch;justify-content:center}
-      .control-btn{min-width:auto;width:100%}
-      .character-svg{width:120px;height:120px}
-      .feedback-text{font-size:2rem}
-      .title{font-size:2.4rem}
-    }
-
-    /* スマホ縦持ちの安全策 */
-    @media (max-width:640px) and (orientation:portrait){
-      body{overflow-y:auto}
-      .game-container{height:auto;max-height:none}
-      .stage{height:46vh}
-      .controls{flex-direction:column}
-      .control-btn{width:100%}
-      .title{font-size:2.4rem}
-    }
-  </style>
+  @media (max-width: 920px){ #stage{grid-template-columns:1fr} }
+</style>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center">
-  <div id="gameContainer" class="game-container">
-
-    <!-- スタート画面 -->
-    <div id="startScreen" class="screen-overlay">
-      <h1 class="title">メトロポリタン・リズム</h1>
-      <p class="text-xl text-center mt-5">
-        'A' 'S' 'D' または ← ↓ → / Space。<br>
-        ※モバイルは最初のタップで音が出ます。
-      </p>
-      <button id="startButton" class="start-button">スタート</button>
-    </div>
-
-    <!-- 難易度選択 -->
-    <div id="difficultySelectScreen" class="screen-overlay hidden">
-      <h2 class="text-3xl font-bold mb-3">難易度を選択</h2>
-      <div class="level-select-container">
-        <button id="easyButton" class="level-button">かんたん</button>
-        <button id="normalButton" class="level-button locked" disabled>ふつう</button>
-        <button id="hardButton" class="level-button locked" disabled>むずかしい</button>
-      </div>
-    </div>
-
-    <!-- レベルクリア -->
-    <div id="levelClearScreen" class="screen-overlay hidden">
-      <h2 class="text-4xl font-bold mb-4 text-green-400">レベルクリア</h2>
-      <p class="text-2xl mb-6">次へ進みます</p>
-      <button id="nextLevelButton" class="start-button">次のレベルへ</button>
-    </div>
-
-    <!-- エンディング -->
-    <div id="endingScreen" class="screen-overlay hidden">
-      <h2 class="text-4xl font-bold mb-4 text-yellow-400">ゲームクリア</h2>
-      <p class="text-2xl mb-6">最終スコア: <span id="finalScore">0</span></p>
-      <button id="playAgainButton" class="start-button">もう一度</button>
-    </div>
-
-    <!-- プレイ画面 -->
-    <div id="gameContent" class="hidden w-full h-full flex flex-col items-center justify-center">
-      <div class="info-panel">
-        <div>スコア: <span id="score">0</span></div>
-        <div>コンボ: <span id="combo">0</span></div>
-        <div class="score-goal">クリアまで: <span id="scoreGoal">0</span></div>
-      </div>
-
-      <div id="stage" class="stage mt-3">
-        <div class="target-zone"></div>
-
-        <!-- 棒人間：関節単位で制御 -->
-        <div class="character-container">
-          <svg class="character-svg" viewBox="0 0 200 200">
-            <!-- 頭 -->
-            <circle id="head" cx="100" cy="38" r="16"/>
-            <!-- 胴 -->
-            <line id="torso" x1="100" y1="54" x2="100" y2="120"/>
-            <!-- 腕（肩の位置 y=70） -->
-            <line id="leftArm"  x1="100" y1="70" x2="64"  y2="100"/>
-            <line id="rightArm" x1="100" y1="70" x2="136" y2="100"/>
-            <!-- 脚（股関節 y=120） -->
-            <line id="leftLeg"  x1="100" y1="120" x2="78"  y2="162"/>
-            <line id="rightLeg" x1="100" y1="120" x2="122" y2="162"/>
-          </svg>
+<body>
+<div id="scene-start" class="scene active">
+  <div class="wrap">
+    <div class="card center">
+      <div>
+        <div class="pill">Rhythm × Action</div>
+        <h1 class="title">リズムバトル：棒人間でパンチ・キック・ジャンプ</h1>
+        <p class="subtitle">押すだけで技。技で音楽。子ども向け・1ファイル。</p>
+        <div class="row" style="justify-content:center;margin:18px 0 6px">
+          <button id="btnStart">はじめる</button>
+          <button id="btnHow">あそびかた</button>
         </div>
+        <p class="subtitle">キーボード: <span class="kbd">D</span>=パンチ / <span class="kbd">F</span>=キック / <span class="kbd">Space</span>=ジャンプ</p>
+      </div>
+    </div>
+    <div id="how" class="card" style="display:none;margin-top:14px">
+      <b>あそびかた</b>
+      <ol>
+        <li>ノーツが下に来たら、同じ技のキーを押す。</li>
+        <li>当たると判定と音が鳴り、敵HPが減る。</li>
+        <li>HPを0にすればクリア。スマホは下の3ボタンでもOK。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div id="scene-play" class="scene">
+  <div class="wrap">
+    <div id="hud">
+      <div class="stat"><span>スコア</span> <b id="score">0</b></div>
+      <div class="stat"><span>コンボ</span> <b id="combo">0</b></div>
+      <div class="stat"><span>判定</span> <b id="judge">-</b></div>
+      <div id="gaugeWrap" class="stat" style="flex:1"><span>ボスHP</span>
+        <div id="hpbar"><i style="width:100%"></i></div>
+      </div>
+      <div class="stat"><span>のこり</span> <b id="timeLeft">--</b></div>
+    </div>
+
+    <div id="stage">
+      <div id="fight" class="card">
+        <!-- Canvas 棒人間 -->
+        <canvas id="gameCanvas" aria-label="stickman stage"></canvas>
+        <div class="hit" id="hitFx"></div>
       </div>
 
-      <div id="controls" class="controls">
-        <button id="punchButton" class="control-btn punch">パンチ (A / ←)</button>
-        <button id="kickButton"  class="control-btn kick">キック (S / ↓)</button>
-        <button id="jumpButton"  class="control-btn jump">ジャンプ (D / → / Space)</button>
+      <div id="lanes" class="card">
+        <div class="lane" data-lane="0"><div class="label">パンチ <span class="kbd">D</span></div><div class="hitline"></div><div class="spark"></div></div>
+        <div class="lane" data-lane="1"><div class="label">キック <span class="kbd">F</span></div><div class="hitline"></div><div class="spark"></div></div>
+        <div class="lane" data-lane="2"><div class="label">ジャンプ <span class="kbd">Space</span></div><div class="hitline"></div><div class="spark"></div></div>
       </div>
     </div>
 
-    <audio id="bgm" loop>
-      <source src="https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3" type="audio/mp3" />
-    </audio>
+    <div id="controls" class="row">
+      <button class="ctl" data-lane="0">パンチ</button>
+      <button class="ctl" data-lane="1">キック</button>
+      <button class="ctl" data-lane="2">ジャンプ</button>
+    </div>
   </div>
+</div>
 
-  <script type="module">
-    // ====== 進行・UI ======
-    const startScreen  = document.getElementById('startScreen');
-    const difficultySelectScreen = document.getElementById('difficultySelectScreen');
-    const levelClearScreen = document.getElementById('levelClearScreen');
-    const endingScreen = document.getElementById('endingScreen');
-    const gameContent  = document.getElementById('gameContent');
+<div id="scene-result" class="scene">
+  <div class="wrap center">
+    <div class="card">
+      <div class="big" id="resultTitle">ステージ クリア</div>
+      <div class="result-grid">
+        <div class="result-item">PERFECT<br><b id="rPerfect">0</b></div>
+        <div class="result-item">GREAT<br><b id="rGreat">0</b></div>
+        <div class="result-item">GOOD<br><b id="rGood">0</b></div>
+        <div class="result-item">MISS<br><b id="rMiss">0</b></div>
+      </div>
+      <div class="rank" id="rRank">S</div>
+      <div class="row" style="justify-content:center;margin-top:8px">
+        <button id="toEnding">エンディングへ</button>
+        <button id="retry">リトライ</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    const stage        = document.getElementById('stage');
-    const scoreDisplay = document.getElementById('score');
-    const comboDisplay = document.getElementById('combo');
-    const scoreGoalDisplay = document.getElementById('scoreGoal');
+<div id="scene-ending" class="scene">
+  <div class="wrap center">
+    <div class="card ending">
+      <div class="big">ありがとう</div>
+      <p>技のリズムが街じゅうに広がった。泣いていた子も笑って、みんなで手をたたく。敵だったはずの相手も、いつのまにか一緒にステップを踏んでいる。</p>
+      <p>音楽は、こころをつなぐ魔法。きょうのヒーローは、きみ。</p>
+      <div class="row" style="justify-content:center;margin-top:8px">
+        <button id="restart">タイトルへ</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    const punchButton  = document.getElementById('punchButton');
-    const kickButton   = document.getElementById('kickButton');
-    const jumpButton   = document.getElementById('jumpButton');
+<script>
+(() => {
+  // --------- Utilities
+  const qs = (s, root=document) => root.querySelector(s);
+  const qsa = (s, root=document) => [...root.querySelectorAll(s)];
+  const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
 
-    const easyButton   = document.getElementById('easyButton');
-    const normalButton = document.getElementById('normalButton');
-    const hardButton   = document.getElementById('hardButton');
-    const nextLevelButton = document.getElementById('nextLevelButton');
-    const playAgainButton = document.getElementById('playAgainButton');
+  // --------- Canvas / Stickman
+  const canvas = qs('#gameCanvas');
+  const ctx = canvas.getContext('2d', { alpha: true });
+  let dpr = Math.max(1, window.devicePixelRatio || 1);
 
-    const finalScoreDisplay = document.getElementById('finalScore');
-    const bgm = document.getElementById('bgm');
+  function fitCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    // reset transform before resizing to avoid compounding scales
+    ctx.setTransform(1,0,0,1,0,0);
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  const resizeObserver = new ResizeObserver(()=>{ dpr = Math.max(1, window.devicePixelRatio || 1); fitCanvas(); });
+  resizeObserver.observe(canvas);
+  fitCanvas();
 
-    const characterSvg = document.querySelector('.character-svg');
+  const stick = {
+    x: () => (canvas.width / dpr) * 0.5,
+    groundY: () => (canvas.height / dpr) - 50,
+    width: 30, height: 50, color: '#06b6d4',
+    vy: 0, state: 'idle', timer: 0
+  };
 
-    // ====== ゲーム状態 ======
-    let score = 0, combo = 0, notes = [], isGameRunning = false;
-    let bpm, noteSpeedMultiplier, noteSpawnInterval, scoreToClearLevel, currentLevel = 0;
-    let unlockedLevel = 1; // ローカル保持（Firebase無効化）
+  function drawArms(x,y,a){
+    ctx.beginPath(); ctx.moveTo(x, y+25); ctx.lineTo(x+10, y+35 + a*5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y+25); ctx.lineTo(x-10, y+35 - a*5); ctx.stroke();
+  }
+  function drawLegs(x,y,a){
+    ctx.beginPath(); ctx.moveTo(x, y+40); ctx.lineTo(x+8, y+50 - a*5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y+40); ctx.lineTo(x-8, y+50 + a*5); ctx.stroke();
+  }
+  function drawGround(){
+    const w = canvas.width / dpr;
+    const gy = stick.groundY();
+    ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke();
+  }
+  function drawStickman(){
+    const w = canvas.width / dpr, h = canvas.height / dpr;
+    ctx.clearRect(0,0,w,h);
+    drawGround();
+    ctx.fillStyle = stick.color;
+    ctx.strokeStyle = '#f0f9ff';
+    ctx.lineWidth = 3;
+    const cx = stick.x();
+    const cy = stickY() - stick.height;
 
-    const noteTypes = ['punch','kick','jump'];
-    const keyMap = {
-      'KeyA':'punch','ArrowLeft':'punch',
-      'KeyS':'kick','ArrowDown':'kick',
-      'KeyD':'jump','ArrowRight':'jump','Space':'jump'
-    };
+    // body
+    ctx.beginPath(); ctx.moveTo(cx, cy+20); ctx.lineTo(cx, cy+40); ctx.stroke();
+    // head
+    ctx.beginPath(); ctx.arc(cx, cy+10, 10, 0, Math.PI*2); ctx.fill();
 
-    // 難易度（スコアクリア制）
-    const difficultySettings = {
-      1:{ bpm: 80,  speed: .52, scoreToClear: 25000 },
-      2:{ bpm:120,  speed: .62, scoreToClear: 75000 },
-      3:{ bpm:150,  speed: .72, scoreToClear:150000 }
-    };
-
-    function showScreen(id){
-      document.querySelectorAll('.screen-overlay').forEach(s=>s.classList.add('hidden'));
-      document.getElementById(id).classList.remove('hidden');
+    // limbs by state
+    if(stick.state==='punching'){
+      ctx.beginPath(); ctx.moveTo(cx, cy+25); ctx.lineTo(cx+25, cy+20); ctx.stroke();
+      drawLegs(cx, cy, 0);
+    } else if(stick.state==='kicking'){
+      drawArms(cx, cy, -0.5);
+      ctx.beginPath(); ctx.moveTo(cx, cy+40); ctx.lineTo(cx+20, cy+35); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy+40); ctx.lineTo(cx-5, cy+50); ctx.stroke();
+    } else if(stick.state==='jumping'){
+      drawArms(cx, cy, 1);
+      drawLegs(cx, cy, 0.5);
+    } else {
+      drawArms(cx, cy, 0);
+      drawLegs(cx, cy, 0);
     }
+  }
+  function stickY(){ return _y; }
+  let _y = stick.groundY();
 
-    // ====== ゲーム開始と進行 ======
-    function setDifficulty(level){
-      if(level > unlockedLevel) return;
-      currentLevel = level;
-      const s = difficultySettings[level];
-      bpm = s.bpm; noteSpeedMultiplier = s.speed; scoreToClearLevel = s.scoreToClear;
-      startGame();
+  function updateStick(){
+    // gravity / jump
+    if(stick.state==='jumping'){
+      stick.vy += 0.8;
+      _y += stick.vy;
+      const gy = stick.groundY();
+      if(_y >= gy){ _y = gy; stick.state='idle'; stick.vy = 0; }
     }
+    // action timer
+    if(stick.timer>0){ stick.timer--; if(stick.timer===0 && stick.state!=='jumping') stick.state='idle'; }
+  }
+  function doAction(lane){
+    if(lane===0 && stick.state==='idle'){ stick.state='punching'; stick.timer=15; }
+    else if(lane===1 && stick.state==='idle'){ stick.state='kicking'; stick.timer=20; }
+    else if(lane===2 && stick.state==='idle'){ stick.state='jumping'; stick.vy=-15; }
+  }
 
-    function startGame(){
-      showScreen('gameContent');
-      score=0; combo=0; notes.forEach(n=>n.element.remove()); notes=[];
-      isGameRunning=true;
-      scoreDisplay.textContent=score;
-      comboDisplay.textContent=combo;
-      scoreGoalDisplay.textContent=scoreToClearLevel;
+  // --------- Audio (WebAudio; synth voices for Punch/Kick/Jump)
+  let AC; // created on first user gesture
+  function ensureAC(){ if(!AC){ AC = new (window.AudioContext||window.webkitAudioContext)(); } if(AC.state === 'suspended'){ AC.resume(); } }
 
-      // BGM（失敗しても継続）
-      bgm.volume=.5;
-      bgm.play().catch(()=>{ console.log('Autoplay was blocked. Will play on first player input.'); });
+  function env(node, t=0.12, a=0.001){
+    const g = AC.createGain(); g.gain.setValueAtTime(0, AC.currentTime); g.gain.linearRampToValueAtTime(1, AC.currentTime + a); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + t);
+    node.connect(g); g.connect(AC.destination); return g;
+  }
+  function noiseBuffer(){ const len = AC.sampleRate * 0.25; const b = AC.createBuffer(1,len,AC.sampleRate); const d = b.getChannelData(0); for(let i=0;i<len;i++){ d[i] = Math.random()*2-1; } return b; }
+  function playPunch(v=1){ ensureAC();
+    const n = AC.createBufferSource(); n.buffer = noiseBuffer(); const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = 900; bp.Q.value=3; n.connect(bp); const g1 = AC.createGain(); g1.gain.value = 0.3*v; bp.connect(g1); const eg1 = env(g1, 0.08);
+    const o = AC.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(220, AC.currentTime); o.frequency.exponentialRampToValueAtTime(140, AC.currentTime+0.09); const g2 = AC.createGain(); g2.gain.value = 0.25*v; const eg2 = env(g2, 0.1);
+    n.start(); o.start(); o.stop(AC.currentTime+0.12); n.stop(AC.currentTime+0.1);
+    o.connect(g2); eg2.connect(AC.destination); eg1.connect(AC.destination);
+  }
+  function playKick(v=1){ ensureAC();
+    const o = AC.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(120, AC.currentTime); o.frequency.exponentialRampToValueAtTime(50, AC.currentTime+0.18);
+    const g = AC.createGain(); g.gain.value = 0.5*v; const eg = env(g, 0.22, 0.004);
+    o.connect(g); eg.connect(AC.destination); o.start(); o.stop(AC.currentTime+0.24);
+    const n = AC.createBufferSource(); n.buffer = noiseBuffer(); const hp = AC.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1800; n.connect(hp); const cg = AC.createGain(); cg.gain.value = 0.15*v; const ec = env(cg, 0.05, 0.001); hp.connect(cg); ec.connect(AC.destination); n.start(); n.stop(AC.currentTime+0.04);
+  }
+  function playJump(v=1){ ensureAC();
+    const n = AC.createBufferSource(); n.buffer = noiseBuffer(); const bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1500; bp.Q.value=0.8; n.connect(bp); const g1 = AC.createGain(); g1.gain.value = 0.25*v; const eg1 = env(g1, 0.3, 0.008); bp.connect(g1); eg1.connect(AC.destination);
+    const o = AC.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(660, AC.currentTime); o.frequency.exponentialRampToValueAtTime(880, AC.currentTime+0.12); const g2 = AC.createGain(); g2.gain.value = 0.18*v; const eg2 = env(g2, 0.2, 0.004); o.connect(g2); eg2.connect(AC.destination); o.start(); o.stop(AC.currentTime+0.22); n.start(); n.stop(AC.currentTime+0.28);
+  }
+  const VOICES = [playPunch, playKick, playJump];
 
-      clearInterval(noteSpawnInterval);
-      noteSpawnInterval = setInterval(spawnNote, (60 / bpm) * 1000);
-      requestAnimationFrame(gameLoop);
+  // --------- Game State
+  const State = {
+    difficulty: 'normal',
+    chart: [], // {t, lane, el, hit?}
+    idxByLane: [0,0,0],
+    songLength: 60,
+    appear: 2.75, // seconds notes travel
+    windows: { perfect: .09, great: .14, good: .20 },
+    score: 0, combo: 0, bestCombo: 0,
+    tallies: {perfect:0, great:0, good:0, miss:0},
+    hp: 100, hpMax: 100,
+    startAt: 0,
+    running: false,
+    rafId: null
+  };
+
+  // --------- Chart Generator
+  function generateChart(diff='normal'){
+    const cfg = {
+      easy:   { bpm: 100, bars: 16, density: 1.0 },
+      normal: { bpm: 120, bars: 18, density: 1.35 },
+      hard:   { bpm: 140, bars: 20, density: 1.7 }
+    }[diff];
+    const beat = 60/cfg.bpm;
+    const chart = [];
+    let t = 2.0; // lead-in
+    const stepsPerBar = 8; // eighth-note base
+    const chance = cfg.density;
+
+    for(let bar=0;bar<cfg.bars;bar++){
+      for(let step=0;step<stepsPerBar;step++){
+        const lanePattern = [0,1,2];
+        if(Math.random() < 0.65*chance){ chart.push({t, lane: lanePattern[(bar+step)%3]}); }
+        if(Math.random() < 0.35*chance && step%2===0){ chart.push({t, lane: (lanePattern[(bar+step+1)%3])}); }
+        if(diff==='hard' && Math.random()<0.2 && step%2===1){ chart.push({t, lane: (lanePattern[(bar+step+2)%3])}); }
+        t += beat/2; // move by eighth
+      }
+      if(bar%4===3){ t += beat; } // little breath
     }
+    chart.sort((a,b)=>a.t-b.t);
+    return {chart, length: t + 2.0};
+  }
 
-    function spawnNote(){
-      const type = noteTypes[Math.floor(Math.random()*noteTypes.length)];
+  // --------- DOM Notes
+  function spawnNotes(){
+    qsa('.lane').forEach(l => l.querySelectorAll('.note').forEach(n=>n.remove()));
+    for(const n of State.chart){
+      const laneEl = qs(`.lane[data-lane="${n.lane}"]`);
       const el = document.createElement('div');
-      el.className = 'note ' + type;
-      el.style.top = `${Math.random()*(stage.clientHeight-50)}px`;
-      const note = { element: el, type, spawnTime: performance.now() };
-      notes.push(note);
-      stage.appendChild(el);
+      el.className = `note ${['punch','kick','jump'][n.lane]}`;
+      el.style.top = '-100px';
+      el.dataset.t = n.t;
+      laneEl.appendChild(el);
+      n.el = el;
     }
+    State.idxByLane = [0,0,0];
+  }
 
-    function gameLoop(now){
-      if(!isGameRunning) return;
-
-      const targetX = stage.clientWidth * .3;
-      const noteSpeed = ((bpm/60)*200)*noteSpeedMultiplier;
-
-      for(let i=notes.length-1;i>=0;i--){
-        const note = notes[i];
-        const elapsed = now - note.spawnTime;
-        const newRight = (noteSpeed * (elapsed/1000));
-        note.element.style.right = `${newRight}px`;
-
-        // 画面外・ミス判定
-        if(stage.clientWidth - newRight < targetX - 60){
-          if(note.element.style.opacity !== '0'){
-            combo = 0; comboDisplay.textContent = combo;
-            showFeedback('Miss','miss');
-          }
-          note.element.style.opacity = '0';
-          note.element.remove();
-          notes.splice(i,1);
-        }
+  function updateNotes(now){
+    const H = qs('#lanes').clientHeight - 80; // bottom offset to hitline
+    const appear = State.appear;
+    for(const n of State.chart){
+      if(n.hit) continue;
+      const dt = n.t - now;
+      if(dt < -State.windows.good){
+        n.hit = 'miss';
+        State.tallies.miss++;
+        State.combo = 0; updateHUD();
       }
-
-      if(score >= scoreToClearLevel){
-        isGameRunning=false; clearInterval(noteSpawnInterval);
-        bgm.pause(); bgm.currentTime=0;
-        setTimeout(()=>{
-          if(currentLevel < 3){
-            showScreen('levelClearScreen');
-            if(currentLevel === unlockedLevel) unlockedLevel = currentLevel + 1;
-          }else{
-            finalScoreDisplay.textContent = score;
-            showScreen('endingScreen');
-          }
-        },800);
-        return;
-      }
-
-      requestAnimationFrame(gameLoop);
-    }
-
-    // ====== 入力・判定・キャラアクション ======
-    function handleInput(type){
-      if(!isGameRunning) return;
-
-      if(bgm.paused){
-        bgm.play().catch(()=>{ /* 何もしない */ });
-      }
-
-      let best=null, closest=Infinity;
-      const targetX = stage.clientWidth * .3;
-
-      notes.forEach(n=>{
-        const noteCenterX = stage.clientWidth - n.element.offsetLeft - (n.element.clientWidth/2);
-        const d = Math.abs(noteCenterX - targetX);
-        if(n.type===type && d<120 && d<closest){ closest=d; best=n; }
-      });
-
-      if(best){
-        const noteCenterX = stage.clientWidth - best.element.offsetLeft - (best.element.clientWidth/2);
-        const d = Math.abs(noteCenterX - targetX);
-        const T_PERF=10, T_GREAT=30, T_GOOD=60;
-        if(d<T_PERF){ score += 500 + (combo*10); combo++; showFeedback('Perfect!','perfect'); }
-        else if(d<T_GREAT){ score += 300 + (combo*5); combo++; showFeedback('Great!','great'); }
-        else if(d<T_GOOD){ score += 100 + (combo*2); combo++; showFeedback('Good!','good'); }
-        else { combo=0; showFeedback('Miss','miss'); }
-        notes = notes.filter(n=>n!==best);
-        best.element.remove();
-      }else{
-        combo=0; showFeedback('Miss','miss');
-      }
-
-      scoreDisplay.textContent=score; comboDisplay.textContent=combo;
-
-      // ボタン＆キャラにアクション
-      triggerCharacter(type);
-      const btn = document.getElementById(type+'Button');
-      if(btn){
-        btn.classList.add('active',type);
-        setTimeout(()=>btn.classList.remove('active',type),120);
+      if(dt < appear){
+        const y = clamp((1 - (dt/appear)) * H, 0, H);
+        n.el.style.top = (y + 16) + 'px';
+        n.el.style.opacity = dt<0? 0.4 : 1;
       }
     }
+  }
 
-    function triggerCharacter(action){
-      characterSvg.classList.add(action);
-      // 連打でも戻りが破綻しないよう短いタイマーで都度リセット
-      setTimeout(()=>characterSvg.classList.remove(action),160);
+  // --------- Input & Judgement
+  function tryHit(lane){
+    ensureAC();
+    // allow motion before start
+    if(!State.running){ doAction(lane); VOICES[lane](0.7); return; }
+    const now = AC.currentTime - State.startAt;
+    // find nearest unhit note in lane
+    let target = null, idx = -1, bestAbs = 999;
+    for(let i = State.idxByLane[lane]; i < State.chart.length; i++){
+      const n = State.chart[i];
+      if(n.lane !== lane || n.hit) continue;
+      const d = n.t - now; const ad = Math.abs(d);
+      if(ad < bestAbs){ bestAbs = ad; target = n; idx = i; }
+      if(n.t > now + State.windows.good) break;
     }
-
-    function showFeedback(text, style){
-      const el = document.createElement('div');
-      el.className = `feedback-text ${style}`;
-      el.textContent = text;
-      stage.appendChild(el);
-      setTimeout(()=>el.remove(), 820);
+    if(target && bestAbs <= State.windows.good){
+      const j = bestAbs <= State.windows.perfect ? 'perfect' : bestAbs <= State.windows.great ? 'great' : 'good';
+      hitEffect(lane, j);
+      target.hit = j; target.el.remove();
+      State.idxByLane[lane] = idx+1;
+      applyJudge(j);
+      doAction(lane);
+      if(checkClear()) finish(true);
+    } else {
+      State.tallies.miss++; State.combo=0; judgeFlash('MISS', 'bad'); shake(); updateHUD();
+      doAction(lane);
     }
+  }
 
-    // ====== UIイベント ======
-    document.getElementById('startButton').addEventListener('click', ()=>showScreen('difficultySelectScreen'));
-    easyButton.addEventListener('click', ()=>setDifficulty(1));
-    normalButton.addEventListener('click', ()=>setDifficulty(2));
-    hardButton.addEventListener('click', ()=>setDifficulty(3));
-    nextLevelButton.addEventListener('click', ()=>setDifficulty(currentLevel+1));
-    playAgainButton.addEventListener('click', ()=>showScreen('startScreen'));
+  function applyJudge(j){
+    const pts = {perfect: 1200, great: 800, good: 400}[j];
+    const dmg = {perfect: 4, great: 3, good: 1}[j];
+    State.score += pts + Math.floor(State.combo*3);
+    State.combo++; State.bestCombo = Math.max(State.bestCombo, State.combo);
+    State.tallies[j]++;
+    setHP(State.hp - dmg);
+    judgeFlash(j.toUpperCase(), j==='perfect'?'ok':j==='great'?'warn':'');
+    updateHUD();
+    // audio
+    const vol = j==='perfect'?1:j==='great'?0.85:0.7;
+    VOICES[ lastLane ]?.(vol);
+  }
 
-    document.addEventListener('keydown', (e)=>{
-      const action = keyMap[e.code];
-      if(action && isGameRunning) handleInput(action);
-    });
+  function judgeFlash(text, type){
+    const el = qs('#judge');
+    el.textContent = text;
+    el.style.color = type==='ok'? '#4ade80' : type==='warn'? '#fbbf24' : type==='bad'? '#ef4444' : '#eaf6ff';
+  }
 
-    punchButton.addEventListener('click', ()=>handleInput('punch'));
-    kickButton .addEventListener('click', ()=>handleInput('kick'));
-    jumpButton .addEventListener('click', ()=>handleInput('jump'));
+  function setHP(v){ State.hp = clamp(v,0,State.hpMax); qs('#hpbar>i').style.width = ((State.hp/State.hpMax)*100)+'%'; if(v < State.hpMax){ flashEnemy(); } }
+  function flashEnemy(){
+    const f = qs('#fight');
+    f.classList.add('flash');
+    setTimeout(()=> f.classList.remove('flash'), 160);
+  }
+  function shake(){ const f = qs('#fight'); f.classList.add('shake'); setTimeout(()=>f.classList.remove('shake'), 220); }
 
-    // ====== Firebase 無効化版：直接スタート画面へ ======
-    window.onload = () => { showScreen('startScreen'); };
-  </script>
+  function hitEffect(lane, j){
+    const l = qs(`.lane[data-lane="${lane}"] .spark`); l.classList.remove('show'); void l.offsetWidth; l.classList.add('show');
+    const fx = qs('#hitFx'); fx.classList.remove('show'); void fx.offsetWidth; fx.classList.add('show');
+  }
+
+  // --------- Loop
+  function loop(){
+    if(!State.running) return;
+    const now = AC.currentTime - State.startAt;
+    updateNotes(now);
+
+    updateStick();
+    drawStickman();
+
+    const left = Math.max(0, State.songLength - now);
+    qs('#timeLeft').textContent = left.toFixed(1)+'s';
+    if(now > State.songLength + 1){ finish(false); return; }
+    State.rafId = requestAnimationFrame(loop);
+  }
+
+  function checkClear(){ return State.hp <= 0; }
+
+  function finish(cleared){
+    State.running = false; if(State.rafId) cancelAnimationFrame(State.rafId);
+    showScene('scene-result');
+    qs('#resultTitle').textContent = cleared? 'ステージ クリア' : 'ステージ クリアならず';
+    qs('#rPerfect').textContent = State.tallies.perfect;
+    qs('#rGreat').textContent = State.tallies.great;
+    qs('#rGood').textContent = State.tallies.good;
+    qs('#rMiss').textContent = State.tallies.miss;
+    const totalHit = State.tallies.perfect+State.tallies.great+State.tallies.good+State.tallies.miss;
+    const acc = totalHit? ( (State.tallies.perfect*1 + State.tallies.great*0.7 + State.tallies.good*0.4) / totalHit ) : 0;
+    const rank = acc>0.88?'S':acc>0.75?'A':acc>0.6?'B':acc>0.45?'C':'D';
+    qs('#rRank').textContent = rank;
+  }
+
+  function updateHUD(){ qs('#score').textContent = State.score; qs('#combo').textContent = State.combo; }
+
+  // --------- Scene & Game Start
+  function showScene(id){ qsa('.scene').forEach(s=>s.classList.remove('active')); qs('#'+id).classList.add('active'); }
+
+  function newGame(){
+    ensureAC();
+    const {chart,length} = generateChart(State.difficulty);
+    State.chart = chart; State.songLength = length; State.hpMax = Math.max(60, Math.floor(chart.length*2.8)); State.hp = State.hpMax;
+    State.score=0; State.combo=0; State.bestCombo=0; State.tallies={perfect:0,great:0,good:0,miss:0};
+    spawnNotes();
+    qs('#hpbar>i').style.width='100%';
+
+    // reset stick position each game
+    _y = stick.groundY(); stick.vy=0; stick.state='idle'; stick.timer=0;
+
+    setTimeout(()=>{ State.startAt = AC.currentTime; State.running = true; loop(); }, 300);
+  }
+
+  // --------- Controls
+  let lastLane = 0;
+  const keyMap = { 'd':0, 'f':1, ' ':2, 'j':2 };
+  window.addEventListener('keydown', (e)=>{
+    const key = e.key.toLowerCase();
+    if(keyMap.hasOwnProperty(key)){ e.preventDefault(); const lane = keyMap[key]; lastLane = lane; tryHit(lane); }
+  }, {passive:false});
+  qsa('.ctl').forEach(b=> b.addEventListener('click', ()=> { const lane = parseInt(b.dataset.lane,10); lastLane = lane; tryHit(lane); }));
+
+  // --------- UI wiring
+  qs('#btnStart').addEventListener('click', ()=>{ showScene('scene-play'); newGame(); });
+  qs('#btnHow').addEventListener('click', ()=>{ const h=qs('#how'); h.style.display = (h.style.display==='none')?'block':'none'; });
+  qs('#toEnding').addEventListener('click', ()=> showScene('scene-ending'));
+  qs('#retry').addEventListener('click', ()=>{ showScene('scene-play'); newGame(); });
+  qs('#restart').addEventListener('click', ()=>{ showScene('scene-start'); });
+
+  // iOS Audio unlock via first tap
+  document.body.addEventListener('touchstart', ensureAC, {once:true, passive:true});
+
+  // initial draw
+  drawStickman();
+})();
+</script>
 </body>
 </html>
