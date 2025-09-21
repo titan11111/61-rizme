@@ -384,6 +384,7 @@ document.addEventListener('touchend', function(event) {
 
   // --------- Chart Generator（リズム感重視）
   function generateChart(diff='normal'){
+    const densityScale = 0.5; // overall note density reduced to 50%
     const cfg = {
       easy:   { bpm: 100, bars: 16, density: 1.2 },
       normal: { bpm: 120, bars: 18, density: 1.6 },
@@ -393,7 +394,7 @@ document.addEventListener('touchend', function(event) {
     const chart = [];
     let t = 2.0; // lead-in
     const stepsPerBar = 8;
-    const chance = cfg.density;
+    const chance = cfg.density * densityScale;
 
     for(let bar=0; bar<cfg.bars; bar++){
       for(let step=0; step<stepsPerBar; step++){
@@ -401,19 +402,19 @@ document.addEventListener('touchend', function(event) {
         const currentLane = lanePattern[(bar+step)%3];
         
         // メインビート
-        if(Math.random() < 0.8 * chance){ 
-          chart.push({t, lane: currentLane}); 
+        if(Math.random() < 0.8 * chance){
+          chart.push({t, lane: currentLane});
         }
-        
+
         // サブビート
-        if(Math.random() < 0.4 * chance && step%2===0){ 
+        if(Math.random() < 0.4 * chance && step%2===0){
           const subLane = lanePattern[(bar+step+1)%3];
-          chart.push({t: t + beat/4, lane: subLane}); 
+          chart.push({t: t + beat/4, lane: subLane});
         }
-        
+
         // ハードモード：連続攻撃
-        if(diff==='hard' && Math.random()<0.3 && step%4===1){ 
-          chart.push({t: t + beat/8, lane: lanePattern[(bar+step+2)%3]}); 
+        if(diff==='hard' && Math.random() < 0.3 * densityScale && step%4===1){
+          chart.push({t: t + beat/8, lane: lanePattern[(bar+step+2)%3]});
         }
         
         t += beat/2;
